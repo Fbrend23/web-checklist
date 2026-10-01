@@ -156,7 +156,8 @@ Les commentaires HTML `<!-- ... -->` ci-dessous servent de filtre à la page int
 
 ## 13. Clean code (13)
 <!-- types: statique,spa,ssr -->
-- [ ] Noms explicites, fonctions courtes, 3 paramètres au plus
+- [ ] Noms explicites, 3 paramètres au plus
+- [ ] Fonctions courtes à une seule responsabilité
 - [ ] Retours anticipés, 3 niveaux d'imbrication au maximum
 - [ ] Aucun nombre ou texte magique, constantes nommées
 - [ ] Commentaires = pourquoi, aucun code mort ni code commenté (knip)
