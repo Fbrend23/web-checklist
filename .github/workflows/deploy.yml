@@ -1,0 +1,30 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+      FTP_USER: ${{ secrets.FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier les secrets
+        run: |
+          for v in FTP_HOST FTP_USER FTP_PASSWORD; do
+            [ -n "${!v}" ] || { echo "Secret manquant : $v"; exit 1; }
+          done
+
+      - name: Envoyer site/ en FTPS
+        # Trois fichiers, pas de miroir ni de suppression : .htaccess et config.php restent intacts.
+        run: |
+          sudo apt-get install -y lftp
+          lftp -u "$FTP_USER,$FTP_PASSWORD" -e "set ftp:ssl-force true; set ssl:verify-certificate yes; put site/index.html site/CHECKLIST.md site/api.php; bye" "$FTP_HOST"

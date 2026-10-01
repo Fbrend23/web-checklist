@@ -79,9 +79,11 @@ flowchart LR
 ### Déploiement
 
 1. Créer le client `chk` dans Directus avec [`platform-cms`](https://github.com/Fbrend23/platform-cms) (`clients/checklist.json`, puis `npm run provision` et un utilisateur d'écriture).
-2. Sur un hébergement web PHP (Infomaniak), déposer le contenu de `site/` : `index.html`, `CHECKLIST.md`, `api.php`.
+2. Sur un hébergement web PHP (Infomaniak), créer un compte FTP limité à la racine du site. Dans GitHub (Settings, Secrets and variables, Actions), ajouter `FTP_HOST`, `FTP_USER` et `FTP_PASSWORD`. Chaque push sur `main` qui touche `site/` met le site à jour ([`deploy.yml`](.github/workflows/deploy.yml)), ou à la main avec `gh workflow run deploy.yml`.
 3. Dans le Manager, onglet PHP / Apache des paramètres avancés du site, ajouter les variables d'environnement `DIRECTUS_URL` et `DIRECTUS_TOKEN`.
 4. Activer la protection du dossier par mot de passe. Elle couvre aussi `api.php`, sans elle n'importe qui pourrait écrire dans la checklist.
+
+Ajouter les nouvelles cases **en fin de section** dans `CHECKLIST.md` : les identifiants sont positionnels (`2.4` = 4e case de la section 2), une case insérée au milieu décale les cases déjà cochées de tous les projets.
 
 ### En local
 
@@ -107,6 +109,7 @@ web-checklist/
   guide/       13 guides thématiques (01 à 13)
   templates/   modèles à copier dans un projet (AGENTS.md)
   site/        ce qui se déploie : index.html, CHECKLIST.md, api.php
+  .github/     workflow de déploiement FTP de site/
   docs/        images du README
 ```
 
