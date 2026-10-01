@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Checklist web</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#5f5f58; --card:#fff; --line:#dcdcd3; --accent:#0b6b4f; --accent-fg:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161614; --fg:#ecece6; --muted:#a2a29a; --card:#20201d; --line:#3a3a35; --accent:#4cc79b; --accent-fg:#06281d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.5rem; margin:8px 0 4px; }
+  .sub { color:var(--muted); margin:0 0 16px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:12px; }
+  .bar label { display:flex; flex-direction:column; font-size:.85rem; color:var(--muted); gap:2px; flex:1 1 180px; }
+  input[type=text], select { font:inherit; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); min-height:44px; }
+  button { font:inherit; padding:8px 14px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; min-height:44px; }
+  button.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .total { position:sticky; top:0; background:var(--bg); padding:8px 0; z-index:1; }
+  progress { width:100%; height:10px; accent-color:var(--accent); }
+  details { background:var(--card); border:1px solid var(--line); border-radius:8px; margin:8px 0; }
+  summary { cursor:pointer; padding:12px; font-weight:600; display:flex; justify-content:space-between; gap:8px; min-height:44px; }
+  summary .n { color:var(--muted); font-weight:400; white-space:nowrap; }
+  ul { list-style:none; margin:0; padding:0 12px 8px; }
+  li label { display:flex; gap:10px; padding:8px 0; border-top:1px solid var(--line); cursor:pointer; align-items:flex-start; }
+  li input { width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--accent); }
+  li input:checked + span { color:var(--muted); text-decoration:line-through; }
+  code { background:color-mix(in srgb, var(--fg) 10%, transparent); padding:1px 5px; border-radius:4px; font-size:.9em; }
+  .msg { color:var(--muted); font-size:.9rem; min-height:1.4em; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Checklist web</h1>
+  <p class="sub">Source : <code>CHECKLIST.md</code>. Les cases cochées sont enregistrées par projet dans Directus (copie de secours dans ce navigateur).</p>
+
+  <div class="bar">
+    <label>Nom du projet
+      <input type="text" id="projet" placeholder="mon-projet" autocomplete="off" list="projets">
+      <datalist id="projets"></datalist>
+    </label>
+    <label>Type de projet
+      <select id="type">
+        <option value="tous">Tous</option>
+        <option value="statique">Site statique</option>
+        <option value="spa">SPA + BaaS</option>
+        <option value="ssr">SSR / API</option>
+      </select>
+    </label>
+    <button id="export" class="primary" type="button">Exporter en Markdown</button>
+    <button id="reset" type="button">Réinitialiser</button>
+  </div>
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+
+  <div class="total">
+    <progress id="total" max="1" value="0" aria-label="Progression totale"></progress>
+    <div class="msg" id="totalTxt"></div>
+  </div>
+
+  <div id="liste">Chargement…</div>
+  <noscript>Cette page demande JavaScript. Le contenu est dans CHECKLIST.md.</noscript>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const store = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+  del(k) { try { localStorage.removeItem(k) } catch {} },
+}
+const ALL = ['statique', 'spa', 'ssr']
+let sections = []
+let checked = {}
+
+function parse(md) {
+  const out = []
+  let cur = null
+  for (const line of md.split(/\r?\n/)) {
+    let m = line.match(/^## (\d+)\. (.+)$/)
+    if (m) { cur = { num: m[1], title: m[2], types: ALL, items: [] }; out.push(cur); continue }
+    if (!cur) continue
+    m = line.match(/^<!-- types: (.+) -->$/)
+    if (m) { cur.types = m[1].split(',').map((s) => s.trim()); continue }
+    m = line.match(/^- \[[ x]\] (.+?)(?: <!-- ([a-z,]+) -->)?$/)
+    if (m) {
+      const id = cur.num + '.' + (cur.items.length + 1)
+      cur.items.push({ id, text: m[1], types: m[2] ? m[2].split(',') : cur.types })
+    }
+  }
+  return out
+}
+
+// `code` et **gras** sans innerHTML
+function inline(parent, text) {
+  for (const part of text.split(/(`[^`]+`|\*\*[^*]+\*\*)/)) {
+    if (!part) continue
+    if (part[0] === '`') { const c = document.createElement('code'); c.textContent = part.slice(1, -1); parent.append(c) }
+    else if (part.startsWith('**')) { const b = document.createElement('strong'); b.textContent = part.slice(2, -2); parent.append(b) }
+    else parent.append(part)
+  }
+}
+
+const nom = () => $('projet').value.trim() || 'sans-nom'
+const key = () => 'web-checklist:' + nom()
+const type = () => $('type').value
+const visible = (item) => type() === 'tous' || item.types.includes(type())
+
+// Directus via api.php (le jeton reste côté serveur). localStorage garde la
+// copie locale : hors ligne, ou en local avec `npx serve` où api.php n'existe pas.
+// remoteOk : on n'écrase Directus que si on a pu le lire d'abord pour ce projet.
+let remoteOk = false
+let timer, pending
+
+function load() {
+  try { checked = JSON.parse(store.get(key()) || '{}') } catch { checked = {} }
+  pull()
+}
+
+async function pull() {
+  const n = nom()
+  remoteOk = false
+  try {
+    const r = await fetch('api.php?projet=' + encodeURIComponent(n))
+    const d = await r.json() // du HTML (serveur sans PHP) lève ici
+    if (n !== nom()) return // projet changé pendant l'attente
+    if (r.status === 404 && d.error === 'inconnu') {
+      remoteOk = true // nouveau projet : on envoie ce qui est déjà coché ici
+      if (Object.keys(checked).length) push(body())
+    } else if (r.ok) {
+      checked = d.checked || {}
+      store.set(key(), JSON.stringify(checked))
+      remoteOk = true
+      render()
+    } else throw new Error(r.status)
+  } catch { say('Synchro indisponible : enregistré dans ce navigateur seulement.') }
+}
+
+const body = () => JSON.stringify({ nom: nom(), type: type(), checked })
+
+async function push(b) {
+  if (!remoteOk) return
+  try {
+    const r = await fetch('api.php', { method: 'POST', body: b })
+    if (!r.ok) throw new Error(r.status)
+  } catch { say('Synchro échouée : enregistré dans ce navigateur seulement.') }
+}
+
+function save() {
+  store.set(key(), JSON.stringify(checked))
+  pending = body()
+  clearTimeout(timer)
+  timer = setTimeout(flush, 400)
+}
+function flush() {
+  clearTimeout(timer)
+  if (pending) push(pending)
+  pending = null
+}
+
+function render() {
+  const root = $('liste')
+  const open = new Set([...root.querySelectorAll('details[open]')].map((d) => d.dataset.num))
+  root.replaceChildren()
+  let done = 0, count = 0
+  for (const s of sections) {
+    const items = s.items.filter(visible)
+    if (!items.length) continue
+    const d = document.createElement('details')
+    d.dataset.num = s.num
+    if (open.has(s.num) || !open.size) d.open = true
+    const sum = document.createElement('summary')
+    const t = document.createElement('span'); t.textContent = s.num + '. ' + s.title
+    const n = document.createElement('span'); n.className = 'n'
+    const nd = items.filter((i) => checked[i.id]).length
+    n.textContent = nd + '/' + items.length
+    sum.append(t, n); d.append(sum)
+    const ul = document.createElement('ul')
+    for (const it of items) {
+      const li = document.createElement('li')
+      const lab = document.createElement('label')
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!checked[it.id]
+      cb.addEventListener('change', () => { checked[it.id] = cb.checked; if (!cb.checked) delete checked[it.id]; save(); render() })
+      const sp = document.createElement('span'); inline(sp, it.text)
+      lab.append(cb, sp); li.append(lab); ul.append(li)
+    }
+    d.append(ul); root.append(d)
+    done += nd; count += items.length
+  }
+  $('total').max = count || 1; $('total').value = done
+  $('totalTxt').textContent = done + ' / ' + count + ' cases'
+}
+
+function toMarkdown() {
+  const nom = $('projet').value.trim() || 'sans-nom'
+  const lignes = ['# Checklist : ' + nom, '', 'Type : ' + $('type').selectedOptions[0].textContent + '. Générée le ' + new Date().toLocaleDateString('fr-CH') + '.', '']
+  for (const s of sections) {
+    const items = s.items.filter(visible)
+    if (!items.length) continue
+    lignes.push('## ' + s.num + '. ' + s.title)
+    for (const it of items) lignes.push('- [' + (checked[it.id] ? 'x' : ' ') + '] ' + it.text)
+    lignes.push('')
+  }
+  return lignes.join('\n')
+}
+
+function say(t) { $('msg').textContent = t }
+
+$('export').addEventListener('click', async () => {
+  const md = toMarkdown()
+  const nom = ($('projet').value.trim() || 'sans-nom').replace(/[^\w.-]+/g, '-')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }))
+  a.download = 'CHECKLIST-' + nom + '.md'
+  a.click(); URL.revokeObjectURL(a.href)
+  try { await navigator.clipboard.writeText(md); say('Exporté et copié dans le presse-papier.') }
+  catch { say('Exporté (copie dans le presse-papier non autorisée).') }
+})
+$('reset').addEventListener('click', () => {
+  if (!confirm('Décocher toutes les cases de ce projet ?')) return
+  checked = {}; save(); render(); say('Projet réinitialisé.')
+})
+$('projet').addEventListener('change', () => { flush(); store.set('web-checklist:dernier', $('projet').value.trim()); load(); render() })
+$('type').addEventListener('change', () => { store.set('web-checklist:type', type()); render() })
+
+$('projet').value = store.get('web-checklist:dernier') || ''
+$('type').value = store.get('web-checklist:type') || 'tous'
+
+fetch('api.php')
+  .then((r) => r.json())
+  .then((l) => { if (Array.isArray(l)) $('projets').replaceChildren(...l.map((v) => Object.assign(document.createElement('option'), { value: v }))) })
+  .catch(() => {})
+
+fetch('CHECKLIST.md')
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.text() })
+  .then((md) => { sections = parse(md); load(); render() })
+  .catch(() => { $('liste').textContent = 'Impossible de charger CHECKLIST.md. Lancer un serveur local : npx serve site' })
+</script>
+</body>
+</html>
