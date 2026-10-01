@@ -15,6 +15,7 @@ Projet : ________________  Date : ____________
 | 07 Tests, 08 CI/CD | oui | oui | oui |
 | 09 Performance, 10 Accessibilité, 11 SEO | oui | oui | oui |
 | 12 Mise en production | oui | oui | oui |
+| 13 Clean code | oui | oui | oui |
 
 Les commentaires HTML `<!-- ... -->` ci-dessous servent de filtre à la page interactive : sans commentaire, la case vaut pour tous les types.
 
@@ -152,3 +153,12 @@ Les commentaires HTML `<!-- ... -->` ci-dessous servent de filtre à la page int
 - [ ] `.env`, `.git`, `/api/` en 404 sur la production
 - [ ] Dependabot actif, `npm audit` mensuel
 - [ ] README d'exploitation à jour (déployer, secrets, contacts)
+
+## 13. Clean code (13)
+<!-- types: statique,spa,ssr -->
+- [ ] Noms explicites, fonctions courtes, 3 paramètres au plus
+- [ ] Retours anticipés, 3 niveaux d'imbrication au maximum
+- [ ] Aucun nombre ou texte magique, constantes nommées
+- [ ] Commentaires = pourquoi, aucun code mort ni code commenté (knip)
+- [ ] Aucune erreur avalée, messages d'erreur avec contexte
+- [ ] Règles ESLint de complexité actives, duplication contrôlée (jscpd)

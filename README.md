@@ -4,7 +4,7 @@
 
 **Mes bonnes pratiques de développement web, à valider à chaque projet,<br>du choix de la techno jusqu'au SEO final.**
 
-12 guides thématiques &middot; 99 cases à cocher &middot; une page de suivi accessible depuis n'importe quel poste
+13 guides thématiques &middot; 105 cases à cocher &middot; une page de suivi accessible depuis n'importe quel poste
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/page-sombre.png">
@@ -22,7 +22,7 @@
 Ce dépôt est né de ce que j'ai appris en construisant des projets depuis août 2026. Chaque leçon (une faille, un bug de déploiement, un choix regretté) est écrite une fois, avec l'exemple tiré de mon propre code, pour ne pas la refaire.
 
 - **Des guides** : un fichier par thème, tous sur le même gabarit (pourquoi, règles, checklist, exemples avec le chemin du fichier source, commandes, pièges déjà vécus).
-- **Une checklist condensée** : les 99 cases à copier dans un projet, filtrables par type (site statique, SPA + BaaS, SSR / API).
+- **Une checklist condensée** : les 105 cases à copier dans un projet, filtrables par type (site statique, SPA + BaaS, SSR / API).
 - **Une page de suivi** : on coche les cases par projet, l'état est enregistré dans Directus et se retrouve depuis n'importe quel poste.
 - **Un modèle de fichier de contexte IA** : les règles d'or en moins de 60 lignes.
 
@@ -31,7 +31,7 @@ Ce dépôt est né de ce que j'ai appris en construisant des projets depuis aoû
 | Moment | Fichiers à parcourir |
 |---|---|
 | **Démarrage** du projet | 01 techno, 02 git, 03 secrets, 08 CI/CD (mise en place du pipeline) |
-| **Pendant** le développement | 04 sécurité, 06 base de données, 07 tests, 10 accessibilité |
+| **Pendant** le développement | 04 sécurité, 06 base de données, 07 tests, 10 accessibilité, 13 clean code |
 | **Avant la mise en ligne** | 05 attaques extérieures, 09 performance, 11 SEO, 12 mise en production |
 | **Maintenance** (chaque mois) | 05 chaîne d'approvisionnement, 12 suivi, `npm audit`, Dependabot |
 
@@ -56,6 +56,7 @@ Ce dépôt est né de ce que j'ai appris en construisant des projets depuis aoû
 | [10 Accessibilité](guide/10-accessibilite.md) | Clavier, ARIA, mouvement réduit, sans JS |
 | [11 SEO](guide/11-seo.md) | Balises, JSON-LD, sitemap, Search Console |
 | [12 Mise en production et suivi](guide/12-mise-en-prod-et-suivi.md) | Jour J, suivi d'erreurs, légal, mises à jour |
+| [13 Clean code](guide/13-clean-code.md) | Nommage, fonctions, duplication, commentaires, ESLint |
 | [Checklist condensée](site/CHECKLIST.md) | Toutes les cases à copier dans un projet |
 
 ## La page de suivi
@@ -103,7 +104,7 @@ DIRECTUS_URL=https://api.example.ch DIRECTUS_TOKEN=... php -S 127.0.0.1:8099 -t 
 ```
 web-checklist/
   README.md
-  guide/       12 guides thématiques (01 à 12)
+  guide/       13 guides thématiques (01 à 13)
   templates/   modèles à copier dans un projet (AGENTS.md)
   site/        ce qui se déploie : index.html, CHECKLIST.md, api.php
   docs/        images du README

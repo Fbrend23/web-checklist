@@ -23,6 +23,7 @@
 - Aucun `console.log` ni stack trace en production.
 - Un bug corrigé reçoit un test.
 - Rien ne doit réussir en silence : une variable ou une source manquante fait échouer le build.
+- Code lisible : noms explicites, fonctions courtes, pas de code mort, commentaire = pourquoi (guide 13).
 
 ## Conventions git
 - Commits conventionnels en français : `type: phrase`, le corps explique pourquoi.
