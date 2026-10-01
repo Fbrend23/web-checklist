@@ -162,4 +162,6 @@ Les commentaires HTML `<!-- ... -->` ci-dessous servent de filtre à la page int
 - [ ] Aucun nombre ou texte magique, constantes nommées
 - [ ] Commentaires = pourquoi, aucun code mort ni code commenté (knip)
 - [ ] Aucune erreur avalée, messages d'erreur avec contexte
-- [ ] Règles ESLint de complexité actives, duplication contrôlée (jscpd)
+- [ ] DRY à la troisième répétition (jscpd), sans abstraction prématurée
+- [ ] YAGNI : rien écrit pour plus tard, le plus simple qui marche
+- [ ] Règles ESLint de complexité actives, appliquées par la CI
