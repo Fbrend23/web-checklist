@@ -121,3 +121,7 @@ web-checklist/
 ## Projets cités en exemple
 
 Cliffhanger-, matinale-seoul, Portail, Prodysos, LunchPicker, site-photos-v2, Maisallezfieu, mis.lawmission.net-V2, Contact, platform-cms, Wiki-ETML, ainsi que mes cours (183 sécurité des applications, CI/CD). Les chemins sont relatifs au dossier `GitHub/`. Les contre-exemples sont anonymisés : ils sont là pour apprendre, pas pour juger.
+
+## Licence
+
+[MIT](LICENSE).
