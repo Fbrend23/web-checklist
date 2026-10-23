@@ -1,6 +1,6 @@
 <?php
 // Proxy vers Directus : le jeton reste ici, le navigateur ne le voit jamais.
-// GET            -> liste des noms de projets
+// GET            -> liste des projets [{nom, type, coches, maj}]
 // GET ?projet=x  -> { type, checked } (404 si inconnu)
 // POST {nom, type, checked} -> enregistre (crée ou met à jour)
 // L'accès est protégé par le mot de passe du dossier (Infomaniak), pas ici.
@@ -53,8 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $projet = $_GET['projet'] ?? null;
 if ($projet === null) {
   // ponytail: 200 projets max, pagination si la liste dépasse
-  $rows = directus('GET', COLLECTION . '?limit=200&sort=-date_updated&fields=nom')['data'] ?? [];
-  exit(json_encode(array_column($rows, 'nom')));
+  $rows = directus('GET', COLLECTION . '?limit=200&sort=-date_updated&fields=nom,type,checked,date_updated')['data'] ?? [];
+  exit(json_encode(array_map(fn($r) => [
+    'nom' => $r['nom'],
+    'type' => $r['type'] ?? '',
+    'coches' => count($r['checked'] ?? []),
+    'maj' => $r['date_updated'] ?? null,
+  ], $rows)));
 }
 $rows = directus('GET', COLLECTION . '?limit=1&fields=type,checked&filter[nom][_eq]=' . rawurlencode($projet))['data'] ?? [];
 if (!$rows) {

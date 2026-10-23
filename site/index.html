@@ -41,6 +41,12 @@
   <p class="sub">Source : <code>CHECKLIST.md</code>. Les cases cochées sont enregistrées par projet dans Directus (copie de secours dans ce navigateur).</p>
 
   <div class="bar">
+    <label>Mes checklists
+      <select id="ouvrir"><option value="">Ouvrir une checklist…</option></select>
+    </label>
+    <button id="nouvelle" type="button">Nouvelle</button>
+  </div>
+  <div class="bar">
     <label>Nom du projet
       <input type="text" id="projet" placeholder="mon-projet" autocomplete="off" list="projets">
       <datalist id="projets"></datalist>
@@ -134,6 +140,7 @@ async function pull() {
       if (Object.keys(checked).length) push(body())
     } else if (r.ok) {
       checked = d.checked || {}
+      if ([...$('type').options].some((o) => o.value === d.type)) $('type').value = d.type
       store.set(key(), JSON.stringify(checked))
       remoteOk = true
       render()
@@ -148,6 +155,7 @@ async function push(b) {
   try {
     const r = await fetch('api.php', { method: 'POST', body: b })
     if (!r.ok) throw new Error(r.status)
+    chargerListe()
   } catch { say('Synchro échouée : enregistré dans ce navigateur seulement.') }
 }
 
@@ -225,16 +233,45 @@ $('reset').addEventListener('click', () => {
   if (!confirm('Décocher toutes les cases de ce projet ?')) return
   checked = {}; save(); render(); say('Projet réinitialisé.')
 })
-$('projet').addEventListener('change', () => { flush(); store.set('web-checklist:dernier', $('projet').value.trim()); load(); render() })
+// Seule voie de navigation entre projets : champ nom, liste, bouton Nouvelle, hash d'URL.
+function ouvrir(n) {
+  flush()
+  $('projet').value = n
+  store.set('web-checklist:dernier', n)
+  const h = n ? '#p=' + encodeURIComponent(n) : ''
+  if (location.hash !== h) history.pushState(null, '', h || location.pathname + location.search)
+  $('ouvrir').value = [...$('ouvrir').options].some((o) => o.value === n) ? n : ''
+  load(); render()
+}
+const hashNom = () => { const m = location.hash.match(/^#p=(.+)$/); return m ? decodeURIComponent(m[1]) : null }
+
+async function chargerListe() {
+  try {
+    const l = await (await fetch('api.php')).json()
+    if (!Array.isArray(l)) return
+    const libelle = (t) => [...$('type').options].find((o) => o.value === t)?.textContent
+    $('projets').replaceChildren(...l.map((p) => Object.assign(document.createElement('option'), { value: p.nom })))
+    $('ouvrir').replaceChildren(
+      Object.assign(document.createElement('option'), { value: '', textContent: l.length ? 'Ouvrir une checklist…' : 'Aucune checklist enregistrée' }),
+      ...l.map((p) => Object.assign(document.createElement('option'), {
+        value: p.nom,
+        textContent: [p.nom, libelle(p.type), p.coches + ' cases'].filter(Boolean).join(' · '),
+      })),
+    )
+    $('ouvrir').value = l.some((p) => p.nom === nom()) ? nom() : ''
+  } catch {}
+}
+
+$('projet').addEventListener('change', () => ouvrir($('projet').value.trim()))
+$('ouvrir').addEventListener('change', () => { if ($('ouvrir').value) ouvrir($('ouvrir').value) })
+$('nouvelle').addEventListener('click', () => { ouvrir(''); $('projet').focus() })
+window.addEventListener('popstate', () => { const n = hashNom(); ouvrir(n ?? '') })
 $('type').addEventListener('change', () => { store.set('web-checklist:type', type()); render() })
 
-$('projet').value = store.get('web-checklist:dernier') || ''
+$('projet').value = hashNom() ?? store.get('web-checklist:dernier') ?? ''
 $('type').value = store.get('web-checklist:type') || 'tous'
 
-fetch('api.php')
-  .then((r) => r.json())
-  .then((l) => { if (Array.isArray(l)) $('projets').replaceChildren(...l.map((v) => Object.assign(document.createElement('option'), { value: v }))) })
-  .catch(() => {})
+chargerListe()
 
 fetch('CHECKLIST.md')
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.text() })
