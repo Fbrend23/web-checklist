@@ -60,6 +60,8 @@
       </select>
     </label>
     <button id="export" class="primary" type="button">Exporter en Markdown</button>
+    <button id="import" type="button">Importer un Markdown</button>
+    <input type="file" id="fichier" accept=".md,text/markdown,text/plain" hidden>
     <button id="reset" type="button">Réinitialiser</button>
   </div>
   <p class="msg" id="msg" role="status" aria-live="polite"></p>
@@ -93,10 +95,10 @@ function parse(md) {
     if (!cur) continue
     m = line.match(/^<!-- types: (.+) -->$/)
     if (m) { cur.types = m[1].split(',').map((s) => s.trim()); continue }
-    m = line.match(/^- \[[ x]\] (.+?)(?: <!-- ([a-z,]+) -->)?$/)
+    m = line.match(/^- \[([ x])\] (.+?)(?: <!-- ([a-z,]+) -->)?$/)
     if (m) {
       const id = cur.num + '.' + (cur.items.length + 1)
-      cur.items.push({ id, text: m[1], types: m[2] ? m[2].split(',') : cur.types })
+      cur.items.push({ id, text: m[2], done: m[1] === 'x', types: m[3] ? m[3].split(',') : cur.types })
     }
   }
   return out
@@ -125,7 +127,7 @@ let timer, pending
 
 function load() {
   try { checked = JSON.parse(store.get(key()) || '{}') } catch { checked = {} }
-  pull()
+  return pull()
 }
 
 async function pull() {
@@ -229,6 +231,28 @@ $('export').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(md); say('Exporté et copié dans le presse-papier.') }
   catch { say('Exporté (copie dans le presse-papier non autorisée).') }
 })
+// Import : on rapproche section + texte (pas l'id, l'export filtre par type).
+// Les cases absentes du fichier restent telles quelles.
+$('import').addEventListener('click', () => $('fichier').click())
+$('fichier').addEventListener('change', async () => {
+  const f = $('fichier').files[0]
+  $('fichier').value = '' // permet de réimporter le même fichier
+  if (!f) return
+  const md = await f.text()
+  const ids = new Map(sections.flatMap((s) => s.items.map((it) => [s.num + '|' + it.text, it.id])))
+  const lus = parse(md).flatMap((s) => s.items.map((it) => ({ id: ids.get(s.num + '|' + it.text), done: it.done })))
+  const connus = lus.filter((l) => l.id)
+  if (!connus.length) return say('Aucune case reconnue dans ce fichier.')
+  const cible = md.match(/^# Checklist : (.+)$/m)?.[1].trim() || nom()
+  const libelle = md.match(/^Type : (.+?)\./m)?.[1]
+  const opt = [...$('type').options].find((o) => o.textContent === libelle)
+  if (!confirm('Importer ' + connus.filter((l) => l.done).length + ' cases cochées dans « ' + cible + ' » ?')) return
+  if (cible !== $('projet').value.trim()) await ouvrir(cible)
+  if (opt) { $('type').value = opt.value; store.set('web-checklist:type', opt.value) }
+  for (const l of connus) { if (l.done) checked[l.id] = true; else delete checked[l.id] }
+  save(); render()
+  say('Importé : ' + connus.length + ' cases lues, ' + (lus.length - connus.length) + ' non reconnues.')
+})
 $('reset').addEventListener('click', () => {
   if (!confirm('Décocher toutes les cases de ce projet ?')) return
   checked = {}; save(); render(); say('Projet réinitialisé.')
@@ -241,7 +265,8 @@ function ouvrir(n) {
   const h = n ? '#p=' + encodeURIComponent(n) : ''
   if (location.hash !== h) history.pushState(null, '', h || location.pathname + location.search)
   $('ouvrir').value = [...$('ouvrir').options].some((o) => o.value === n) ? n : ''
-  load(); render()
+  const p = load(); render()
+  return p
 }
 const hashNom = () => { const m = location.hash.match(/^#p=(.+)$/); return m ? decodeURIComponent(m[1]) : null }
 
