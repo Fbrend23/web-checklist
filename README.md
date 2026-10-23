@@ -61,7 +61,7 @@ Ce dépôt est né de ce que j'ai appris en construisant des projets depuis aoû
 
 ## La page de suivi
 
-`site/index.html` lit `CHECKLIST.md` et l'affiche en cases à cocher : filtre par type de projet, progression globale et par section, export en Markdown à coller dans `doc/CHECKLIST.md`, et import d'un fichier Markdown pour reprendre les cases déjà cochées. Aucune dépendance, aucun build.
+`site/index.html` lit `CHECKLIST.md` et l'affiche en cases à cocher : filtre par type de projet, progression globale et par section, export en Markdown à coller dans `doc/CHECKLIST.md`, et import d'un fichier Markdown pour reprendre les cases déjà cochées. Chaque case peut porter une note, écrite dans la page ou en lignes indentées (`  > ...`) sous la case dans le Markdown, et reprise à l'import. Aucune dépendance, aucun build.
 
 L'état coché est enregistré par nom de projet. Le navigateur ne parle jamais à Directus : il passe par un petit proxy PHP qui garde le jeton côté serveur.
 

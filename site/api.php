@@ -1,8 +1,8 @@
 <?php
 // Proxy vers Directus : le jeton reste ici, le navigateur ne le voit jamais.
 // GET            -> liste des projets [{nom, type, coches, maj}]
-// GET ?projet=x  -> { type, checked } (404 si inconnu)
-// POST {nom, type, checked} -> enregistre (crée ou met à jour)
+// GET ?projet=x  -> { type, checked, notes } (404 si inconnu)
+// POST {nom, type, checked, notes} -> enregistre (crée ou met à jour)
 // L'accès est protégé par le mot de passe du dossier (Infomaniak), pas ici.
 // DIRECTUS_URL et DIRECTUS_TOKEN : variables d'environnement (Manager Infomaniak,
 // onglet PHP / Apache). Le préfixe REDIRECT_ couvre les variables posées par .htaccess.
@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(400);
     exit(json_encode(['error' => 'nom et checked requis']));
   }
-  $row = ['nom' => $nom, 'type' => (string)($in['type'] ?? ''), 'checked' => (object)$in['checked']];
+  $notes = is_array($in['notes'] ?? null) ? $in['notes'] : [];
+  $row = ['nom' => $nom, 'type' => (string)($in['type'] ?? ''), 'checked' => (object)$in['checked'], 'notes' => (object)$notes];
   $found = directus('GET', COLLECTION . '?limit=1&fields=id&filter[nom][_eq]=' . rawurlencode($nom))['data'] ?? [];
   if ($found) directus('PATCH', COLLECTION . '/' . $found[0]['id'], $row);
   else directus('POST', COLLECTION, $row);
@@ -61,11 +62,12 @@ if ($projet === null) {
     'maj' => $r['date_updated'] ?? null,
   ], $rows)));
 }
-$rows = directus('GET', COLLECTION . '?limit=1&fields=type,checked&filter[nom][_eq]=' . rawurlencode($projet))['data'] ?? [];
+$rows = directus('GET', COLLECTION . '?limit=1&fields=type,checked,notes&filter[nom][_eq]=' . rawurlencode($projet))['data'] ?? [];
 if (!$rows) {
   http_response_code(404);
   exit(json_encode(['error' => 'inconnu']));
 }
 // (object) : un {} vide décodé en tableau PHP ressortirait en [], et JS perdrait les cases
 $rows[0]['checked'] = (object)($rows[0]['checked'] ?? []);
+$rows[0]['notes'] = (object)($rows[0]['notes'] ?? []);
 exit(json_encode($rows[0]));

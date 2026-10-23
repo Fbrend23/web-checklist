@@ -31,6 +31,9 @@
   li input { width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--accent); }
   li input:checked + span { color:var(--muted); text-decoration:line-through; }
   code { background:color-mix(in srgb, var(--fg) 10%, transparent); padding:1px 5px; border-radius:4px; font-size:.9em; }
+  li textarea { display:block; width:100%; margin:0 0 4px; font:inherit; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); min-height:44px; resize:vertical; }
+  li textarea[hidden] { display:none; }
+  li button.note { font-size:.85rem; color:var(--muted); margin:0 0 6px 32px; padding:4px 10px; }
   .msg { color:var(--muted); font-size:.9rem; min-height:1.4em; }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
 </style>
@@ -85,20 +88,26 @@ const store = {
 const ALL = ['statique', 'spa', 'ssr']
 let sections = []
 let checked = {}
+let notes = {} // { id: "texte" }, une note par case
 
 function parse(md) {
   const out = []
-  let cur = null
+  let cur = null, last = null
   for (const line of md.split(/\r?\n/)) {
     let m = line.match(/^## (\d+)\. (.+)$/)
-    if (m) { cur = { num: m[1], title: m[2], types: ALL, items: [] }; out.push(cur); continue }
+    if (m) { cur = { num: m[1], title: m[2], types: ALL, items: [] }; out.push(cur); last = null; continue }
     if (!cur) continue
+    // Lignes indentées sous une case = sa note (avec ou sans `>`)
+    m = last && line.match(/^(?: {2,}|\t)\s*(?:> ?)?(.*)$/)
+    if (m) { if (m[1].trim()) last.note = last.note ? last.note + '\n' + m[1].trim() : m[1].trim(); continue }
+    last = null
     m = line.match(/^<!-- types: (.+) -->$/)
     if (m) { cur.types = m[1].split(',').map((s) => s.trim()); continue }
     m = line.match(/^- \[([ x])\] (.+?)(?: <!-- ([a-z,]+) -->)?$/)
     if (m) {
       const id = cur.num + '.' + (cur.items.length + 1)
-      cur.items.push({ id, text: m[2], done: m[1] === 'x', types: m[3] ? m[3].split(',') : cur.types })
+      last = { id, text: m[2], done: m[1] === 'x', types: m[3] ? m[3].split(',') : cur.types, note: '' }
+      cur.items.push(last)
     }
   }
   return out
@@ -127,6 +136,7 @@ let timer, pending
 
 function load() {
   try { checked = JSON.parse(store.get(key()) || '{}') } catch { checked = {} }
+  try { notes = JSON.parse(store.get(key() + ':notes') || '{}') } catch { notes = {} }
   return pull()
 }
 
@@ -139,18 +149,20 @@ async function pull() {
     if (n !== nom()) return // projet changé pendant l'attente
     if (r.status === 404 && d.error === 'inconnu') {
       remoteOk = true // nouveau projet : on envoie ce qui est déjà coché ici
-      if (Object.keys(checked).length) push(body())
+      if (Object.keys(checked).length || Object.keys(notes).length) push(body())
     } else if (r.ok) {
       checked = d.checked || {}
+      notes = d.notes || {}
       if ([...$('type').options].some((o) => o.value === d.type)) $('type').value = d.type
       store.set(key(), JSON.stringify(checked))
+      store.set(key() + ':notes', JSON.stringify(notes))
       remoteOk = true
       render()
     } else throw new Error(r.status)
   } catch { say('Synchro indisponible : enregistré dans ce navigateur seulement.') }
 }
 
-const body = () => JSON.stringify({ nom: nom(), type: type(), checked })
+const body = () => JSON.stringify({ nom: nom(), type: type(), checked, notes })
 
 async function push(b) {
   if (!remoteOk) return
@@ -163,6 +175,7 @@ async function push(b) {
 
 function save() {
   store.set(key(), JSON.stringify(checked))
+  store.set(key() + ':notes', JSON.stringify(notes))
   pending = body()
   clearTimeout(timer)
   timer = setTimeout(flush, 400)
@@ -197,7 +210,14 @@ function render() {
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!checked[it.id]
       cb.addEventListener('change', () => { checked[it.id] = cb.checked; if (!cb.checked) delete checked[it.id]; save(); render() })
       const sp = document.createElement('span'); inline(sp, it.text)
-      lab.append(cb, sp); li.append(lab); ul.append(li)
+      lab.append(cb, sp); li.append(lab)
+      const ta = document.createElement('textarea'); ta.rows = 2; ta.value = notes[it.id] || ''; ta.hidden = !ta.value
+      ta.setAttribute('aria-label', 'Note : ' + it.text)
+      ta.addEventListener('input', () => { const v = ta.value.trim(); if (v) notes[it.id] = v; else delete notes[it.id]; save() })
+      const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'note'
+      nb.textContent = ta.value ? 'Modifier la note' : 'Ajouter une note'
+      nb.addEventListener('click', () => { if (ta.hidden) { ta.hidden = false; ta.focus() } else if (!ta.value) ta.hidden = true })
+      li.append(ta, nb); ul.append(li)
     }
     d.append(ul); root.append(d)
     done += nd; count += items.length
@@ -208,12 +228,19 @@ function render() {
 
 function toMarkdown() {
   const nom = $('projet').value.trim() || 'sans-nom'
-  const lignes = ['# Checklist : ' + nom, '', 'Type : ' + $('type').selectedOptions[0].textContent + '. Générée le ' + new Date().toLocaleDateString('fr-CH') + '.', '']
+  const lignes = ['# Checklist : ' + nom, '', 'Type : ' + $('type').selectedOptions[0].textContent + '. Générée le ' + new Date().toLocaleDateString('fr-CH') + '.', '',
+    '<!-- Pour annoter une case, écrire des lignes indentées juste en dessous, par exemple :',
+    '- [x] HTTPS forcé',
+    '  > fait via Infomaniak',
+    'Puis « Importer un Markdown » pour reprendre les cases cochées et les notes. -->', '']
   for (const s of sections) {
     const items = s.items.filter(visible)
     if (!items.length) continue
     lignes.push('## ' + s.num + '. ' + s.title)
-    for (const it of items) lignes.push('- [' + (checked[it.id] ? 'x' : ' ') + '] ' + it.text)
+    for (const it of items) {
+      lignes.push('- [' + (checked[it.id] ? 'x' : ' ') + '] ' + it.text)
+      for (const l of (notes[it.id] || '').split('\n')) if (l) lignes.push('  > ' + l)
+    }
     lignes.push('')
   }
   return lignes.join('\n')
@@ -240,18 +267,22 @@ $('fichier').addEventListener('change', async () => {
   if (!f) return
   const md = await f.text()
   const ids = new Map(sections.flatMap((s) => s.items.map((it) => [s.num + '|' + it.text, it.id])))
-  const lus = parse(md).flatMap((s) => s.items.map((it) => ({ id: ids.get(s.num + '|' + it.text), done: it.done })))
+  const lus = parse(md).flatMap((s) => s.items.map((it) => ({ id: ids.get(s.num + '|' + it.text), done: it.done, note: it.note })))
   const connus = lus.filter((l) => l.id)
   if (!connus.length) return say('Aucune case reconnue dans ce fichier.')
   const cible = md.match(/^# Checklist : (.+)$/m)?.[1].trim() || nom()
   const libelle = md.match(/^Type : (.+?)\./m)?.[1]
   const opt = [...$('type').options].find((o) => o.textContent === libelle)
-  if (!confirm('Importer ' + connus.filter((l) => l.done).length + ' cases cochées dans « ' + cible + ' » ?')) return
+  const nbNotes = connus.filter((l) => l.note).length
+  if (!confirm('Importer ' + connus.filter((l) => l.done).length + ' cases cochées et ' + nbNotes + ' notes dans « ' + cible + ' » ?')) return
   if (cible !== $('projet').value.trim()) await ouvrir(cible)
   if (opt) { $('type').value = opt.value; store.set('web-checklist:type', opt.value) }
-  for (const l of connus) { if (l.done) checked[l.id] = true; else delete checked[l.id] }
+  for (const l of connus) {
+    if (l.done) checked[l.id] = true; else delete checked[l.id]
+    if (l.note) notes[l.id] = l.note // pas de note dans le fichier : on garde celle d'ici
+  }
   save(); render()
-  say('Importé : ' + connus.length + ' cases lues, ' + (lus.length - connus.length) + ' non reconnues.')
+  say('Importé : ' + connus.length + ' cases lues, ' + nbNotes + ' notes, ' + (lus.length - connus.length) + ' non reconnues.')
 })
 $('reset').addEventListener('click', () => {
   if (!confirm('Décocher toutes les cases de ce projet ?')) return
