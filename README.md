@@ -4,7 +4,7 @@
 
 **Mes bonnes pratiques de développement web, à valider à chaque projet,<br>du choix de la techno jusqu'au SEO final.**
 
-13 guides thématiques &middot; 108 cases à cocher &middot; une page de suivi accessible depuis n'importe quel poste
+13 guides thématiques &middot; 113 cases à cocher &middot; une page de suivi accessible depuis n'importe quel poste
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/page-sombre.png">
@@ -22,7 +22,7 @@
 Ce dépôt est né de ce que j'ai appris en construisant des projets depuis août 2026. Chaque leçon (une faille, un bug de déploiement, un choix regretté) est écrite une fois, avec l'exemple tiré de mon propre code, pour ne pas la refaire.
 
 - **Des guides** : un fichier par thème, tous sur le même gabarit (pourquoi, règles, checklist, exemples avec le chemin du fichier source, commandes, pièges déjà vécus).
-- **Une checklist condensée** : les 108 cases à copier dans un projet, filtrables par type (site statique, SPA + BaaS, SSR / API).
+- **Une checklist condensée** : les 113 cases à copier dans un projet, filtrables par type (site statique, statique + CMS headless, SPA + BaaS, SSR / API).
 - **Une page de suivi** : on coche les cases par projet, l'état est enregistré dans Directus et se retrouve depuis n'importe quel poste.
 - **Un modèle de fichier de contexte IA** : les règles d'or en moins de 60 lignes.
 
